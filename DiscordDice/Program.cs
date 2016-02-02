@@ -98,9 +98,14 @@ namespace DiscordDice
                         {
                             await client.SendMessage(e.Channel, UseMagic(e.Server, e.Message.User, e.Message.Channel));
                         }
-                        if (e.Message.RawText.ToLower().StartsWith("!movie") || e.Message.RawText.ToLower().StartsWith("!rating"))
+                        if (e.Message.RawText.ToLower().StartsWith("!movie") || e.Message.RawText.ToLower().StartsWith("!imdb"))
                         {
                             await client.SendMessage(e.Channel, GetMovieByTitle(e.Message));
+                        }
+                        if (e.Message.RawText.ToLower().StartsWith("!search"))
+                        {
+                            await client.SendMessage(e.Channel, SearchForMovie(e.Message.RawText.Split(new char[] { ' ' }, 2)[1].Replace(' ','+').Replace("&","%26")));
+
                         }
                     }
                 };
@@ -374,7 +379,9 @@ namespace DiscordDice
         {
             //http://www.omdbapi.com/?t=frozen&tomatoes=true
             string movieTitle = message.RawText.Split(new char[] { ' ' }, 2)[1];
-            movieTitle = movieTitle.Replace(' ', '-');
+            movieTitle = movieTitle.Replace(' ', '+').Replace("&", "%26");
+
+
             string jsonString = "";
             using (WebClient wc = new WebClient())
             {
@@ -393,7 +400,28 @@ namespace DiscordDice
 
         private static string SearchForMovie(string movieTitle)
         {
-            return "This hasn't been fully implemented.";
+            string jsonString = "";
+            string output = "Did you mean one of the following?\n\n";
+            int count = 0;
+            try {
+                using (WebClient wc = new WebClient())
+                {
+                    jsonString = wc.DownloadString("http://www.omdbapi.com/?s=" + movieTitle + "&tomatoes=true");
+                }
+                dynamic json = JObject.Parse(jsonString);
+                foreach (dynamic j in json.Search)
+                {
+                    if (count > 4)
+                        break;
+                    output += "Title: " + j.Title + "\nYear: " + j.Year + "\nType: " + j.Type + "\n\n";
+                    count++;
+                }
+                return output;
+            }
+            catch(Exception)
+            {
+                return "No similar movie to that title was found.";
+            }
         }
         #endregion
     }
