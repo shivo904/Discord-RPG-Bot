@@ -1,10 +1,12 @@
 ﻿
 using Discord;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -95,6 +97,10 @@ namespace DiscordDice
                         if (e.Message.RawText.ToLower().StartsWith("!magic") || e.Message.RawText.ToLower().StartsWith("!cast"))
                         {
                             await client.SendMessage(e.Channel, UseMagic(e.Server, e.Message.User, e.Message.Channel));
+                        }
+                        if (e.Message.RawText.ToLower().StartsWith("!movie") || e.Message.RawText.ToLower().StartsWith("!rating"))
+                        {
+                            await client.SendMessage(e.Channel, GetMovieByTitle(e.Message));
                         }
                     }
                 };
@@ -360,6 +366,34 @@ namespace DiscordDice
             string returnValue =
                System.Text.ASCIIEncoding.ASCII.GetString(encodedDataAsBytes);
             return returnValue;
+        }
+        #endregion
+
+        #region movies
+        static public string GetMovieByTitle(Message message)
+        {
+            //http://www.omdbapi.com/?t=frozen&tomatoes=true
+            string movieTitle = message.RawText.Split(new char[] { ' ' }, 2)[1];
+            movieTitle = movieTitle.Replace(' ', '-');
+            string jsonString = "";
+            using (WebClient wc = new WebClient())
+            {
+                jsonString = wc.DownloadString("http://www.omdbapi.com/?t=" + movieTitle + "&tomatoes=true");
+            }
+            dynamic json = JObject.Parse(jsonString);
+            if(json.Response == false)
+            {
+               return SearchForMovie(movieTitle);
+            }
+            else
+            {
+                return json.Poster + "\n\n**" + json.Title + "**\n" + json.Released +"\n\n"+ json.Plot +"\n\nDirector: " + json.Director + "\nActors: " + json.Actors + "\nBox Office: " + json.BoxOffice +"\n\n**Ratings:**\nIMDB: " + json.imdbRating + "\nMetacritic: " + json.Metascore + "\nRotten Tomatos: " + json.tomatoRating;
+            }
+        }
+
+        private static string SearchForMovie(string movieTitle)
+        {
+            return "This hasn't been fully implemented.";
         }
         #endregion
     }
