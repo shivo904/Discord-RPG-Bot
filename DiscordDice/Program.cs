@@ -10,6 +10,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using unirest_net.http;
 
 namespace DiscordDice
 {
@@ -105,8 +106,20 @@ namespace DiscordDice
                         if (e.Message.RawText.ToLower().StartsWith("!search"))
                         {
                             await client.SendMessage(e.Channel, SearchForMovie(e.Message.RawText.Split(new char[] { ' ' }, 2)[1].Replace(' ','+').Replace("&","%26")));
-
                         }
+                        if (e.Message.RawText.ToLower().StartsWith("!yoda"))
+                        {
+                            await client.SendMessage(e.Channel, YodaSpeak(e.Message));
+                        }
+                        if (e.Message.RawText.ToLower().StartsWith("!xkcd"))
+                        {
+                            await client.SendMessage(e.Channel, RandomXKCD());
+                        }
+                        if (e.Message.RawText.ToLower().StartsWith("!urban"))
+                        {
+                            await client.SendMessage(e.Channel, Urban(e.Message));
+                        }
+
                     }
                 };
             }
@@ -422,6 +435,75 @@ namespace DiscordDice
             {
                 return "No similar movie to that title was found.";
             }
+        }
+        #endregion
+
+        #region Yoda
+        static public string YodaSpeak(Message message)
+        {
+            string sentence = message.RawText.Split(new char[] { ' ' }, 2)[1];
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://yoda.p.mashape.com/yoda?sentence="+sentence);
+            request.Headers.Add("X-Mashape-Key", "sYlg4smvE3mshcvRPjz0ioAnAdPwp1hIyFejsn1R39sgTo7CPm");
+            request.Accept = "text/plain";
+            WebResponse response = request.GetResponse();
+            Stream stream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(stream);
+            string content = reader.ReadToEnd();
+            return content;
+        }
+        #endregion
+
+        #region Urban
+        static public string Urban(Message message)
+        {
+            string sentence = message.RawText.Split(new char[] { ' ' }, 2)[1];
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://mashape-community-urban-dictionary.p.mashape.com/define?term="+sentence);
+            request.Headers.Add("X-Mashape-Key", "sYlg4smvE3mshcvRPjz0ioAnAdPwp1hIyFejsn1R39sgTo7CPm");
+            request.Accept = "text/plain";
+            WebResponse response = request.GetResponse();
+            Stream stream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(stream);
+            string fullUrban = reader.ReadToEnd();
+            dynamic content = JObject.Parse(fullUrban);
+            if (content.list.Count != 0)
+            {
+                return content.list[0].definition;
+            }
+            else
+            {
+                return "I could not find anything on urban dictionary for that. :frowning:";
+            }
+            
+        }
+        #endregion
+
+        #region xkcd
+        static public string RandomXKCD()
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://c.xkcd.com/random/comic/");
+            request.Accept = "text/html";
+            WebResponse response = request.GetResponse();
+            Stream stream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(stream);
+            string content = reader.ReadToEnd();
+            string temp = content.Split(new string[] { "Image URL (for hotlinking/embedding): " }, StringSplitOptions.None)[1];
+            string comic = temp.Split(new string[] { "\n" }, StringSplitOptions.None)[0];
+
+            string[] temp2 = content.Split(new string[] { "{{Title text:" }, StringSplitOptions.None);
+            if(temp2.ToList().Count == 1)
+            {
+                temp2= content.Split(new string[] { "{{" }, StringSplitOptions.None);
+            }
+            string snarkyText = temp2[1].Split(new string[] { "}}" }, StringSplitOptions.None)[0];
+            snarkyText = snarkyText.Replace("&#39;", "'");
+
+            string[] temp3 = content.Split(new string[] { "<title>xkcd: " }, StringSplitOptions.None);
+            string title = temp3[1].Split(new string[] { "</title>" }, StringSplitOptions.None)[0];
+
+            string[] temp4 = content.Split(new string[] { "Permanent link to this comic: http://xkcd.com/" }, StringSplitOptions.None);
+            string number = temp4[1].Split(new string[] { "/<br" }, StringSplitOptions.None)[0];
+
+            return comic + "\n\n**Title: **" + title + "\n**Number: **"+number+"\n**Snarky Text: **" + snarkyText;
         }
         #endregion
     }
